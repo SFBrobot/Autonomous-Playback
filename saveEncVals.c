@@ -13,11 +13,11 @@
 #define REVERSED_BTN Btn8D
 #define SPLIT_BTN Btn8L
 
-#define NUM_DUMP Btn8R
+#define NUM_STORE Btn8R
 
 #define STICK_THRESH 15
 
-#define DUMP_MAX 10
+#define STORE_MAX 10
 
 task main()
 {
@@ -27,9 +27,9 @@ task main()
 		ly,
 		lEnc,
 		rEnc,
-		lEncVals[DUMP_MAX],
-		rEncVals[DUMP_MAX],
-		dumpCount;
+		lEncVals[STORE_MAX],
+		rEncVals[STORE_MAX],
+		storeCount;
 
 	bool arcade,
 		split,
@@ -38,7 +38,7 @@ task main()
 	word arcadeLast,
 		splitLast,
 		reversedLast,
-		dumpLast;
+		storeLast;
 
 	while(true) {
 		rx = (vexRT[ChRX] > STICK_THRESH) ? vexRT[ChRX] : 0;
@@ -81,13 +81,25 @@ task main()
 			motor[rightMotor] = reversed ? -ly : ry;
 		}
 
-		if(vexRT[NUM_DUMP] != dumpLast && dumpCount < DUMP_MAX) {
-			dumpLast = vexRT[NUM_DUMP];
+		if(vexRT[NUM_STORE] != storeLast) {
+			storeLast = vexRT[NUM_STORE];
 
-			lEncVals[dumpCount] = lEnc;
-			rEncVals[dumpCount] = rEnc;
-
-			dumpCount++;
+			lEncVals[storeCount % STORE_MAX] = lEnc;
+			rEncVals[storeCount % STORE_MAX] = rEnc;
+		
+			if(storeCount >= STORE_MAX) {
+				displayLCDCenteredString(0, "%d VALUES STORED", STORE_MAX);
+				displayLCDCenteredString(1, "OVERWRITING");
+				
+				bLCDBacklight = !bLCDBacklight;
+				
+				wait1Msec(50);
+				
+				bLCDBacklight = !bLCDBacklight;
+			}
+			
+			storeCount++;
+			
 		}
 
 		wait1Msec(20);
