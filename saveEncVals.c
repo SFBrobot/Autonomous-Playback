@@ -19,8 +19,29 @@
 
 #define STORE_MAX 10
 
-task main()
-{
+int flashes = 0;
+
+task lcdFlash() {
+	while (flashes > 0) {
+		bLCDBacklight = true;
+		wait1Msec(500);
+		
+		bLCDBacklight = false;
+		wait1Msec(500);
+		
+		flashes--;
+	}
+}
+
+void flashLcd(int count) {
+  bool start = !flashes;
+  
+  if (flashes < count) flashes = count;
+  
+  if (start) startTask(lcdFlash);
+}
+
+task main() {
 	int rx,
 		ry,
 		lx,
@@ -86,20 +107,18 @@ task main()
 
 			lEncVals[storeCount % STORE_MAX] = lEnc;
 			rEncVals[storeCount % STORE_MAX] = rEnc;
-		
+			
 			if(storeCount >= STORE_MAX) {
 				displayLCDCenteredString(0, "%d VALUES STORED", STORE_MAX);
 				displayLCDCenteredString(1, "OVERWRITING");
-				
-				bLCDBacklight = !bLCDBacklight;
-				
-				wait1Msec(50);
-				
-				bLCDBacklight = !bLCDBacklight;
+				flashLcd(3);
 			}
+			else {
+			  flashLcd(1);
+			  displayLCDCenteredString(0, "Count:");
+			  displayLCDCenteredString(1, "%d", storeCount);
 			
 			storeCount++;
-			
 		}
 
 		wait1Msec(20);
