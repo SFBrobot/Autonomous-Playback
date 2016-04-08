@@ -99,10 +99,10 @@ brEnc.name = brWheelEnc;
 		updateEnc(&brEnc);
 
 #ifdef HOLONOMIC
-    motor[flWheel] = ly + rx + lx;
-    motor[frWheel] = ly - rx - lx;
-    motor[blWheel] = ly + rx - lx;
-    motor[brWheel] = ly - rx + lx;
+		motor[flWheel] = ly + rx + lx;
+		motor[frWheel] = ly - rx - lx;
+		motor[blWheel] = ly + rx - lx;
+		motor[brWheel] = ly - rx + lx;
 #else
 		if(vexRT[ARCADE_BTN] != arcadeLast) {
 			arcadeLast = vexRT[ARCADE_BTN];
