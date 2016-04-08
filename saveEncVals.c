@@ -51,7 +51,7 @@ void updateEnc(Encoder *enc) {
 	enc->deltaLast = 1.0 * enc->deltaEnc;
 	
 	enc->encVal = SensorValue[enc->name];
-	enc->time = nPgmTime;
+	enc->time = nSysTime;
 	
 	enc->deltaEnc = 1.0 * (enc->encVal - enc->valLast) / (enc->time - enc->timeLast);
 	
