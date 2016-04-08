@@ -19,26 +19,46 @@
 
 #define STORE_MAX 10
 
-int flashes = 0;
+#define HOLONOMIC
 
-task lcdFlash() {
-	while (flashes > 0) {
-		bLCDBacklight = true;
-		wait1Msec(500);
-		
-		bLCDBacklight = false;
-		wait1Msec(500);
-		
-		flashes--;
-	}
+typedef struct {
+	float encVal,
+		valLast,
+		time,
+		timeLast,
+		deltaEnc,
+		deltaLast,
+		accel,
+		savedVals[STORE_MAX];
+	tSensors name;
+	bool reversed;
+} Encoder;
+
+#ifdef HOLONOMIC
+Encoder flEnc,
+	frEnc,
+	blEnc,
+	brEnc;
+#else
+Encoder lEnc,
+	rEnc;
+#endif
+
+void updateEnc(Encoder *enc) {
+	enc->valLast = enc->encVal;
+	enc->timeLast = enc->time;
+	enc->deltaLast = 1.0 * enc->deltaEnc;
+	
+	enc->encVal = SensorValue[enc->name];
+	enc->time = nPgmTime;
+	
+	enc->deltaEnc = 1.0 * (enc->encVal - enc->valLast) / (enc->time - enc->timeLast);
+	
+	enc->accel = 1.0 * (enc->deltaEnc - enc->deltaLast) / (enc->time - enc->timeLast);
 }
 
-void flashLcd(int count) {
-  bool start = !flashes;
-  
-  if (flashes < count) flashes = count;
-  
-  if (start) startTask(lcdFlash);
+void saveEncVal(Encoder *enc) {
+	enc->savedVals[enc->saveCount] = enc->encVal;
 }
 
 task main() {
@@ -46,27 +66,55 @@ task main() {
 		ry,
 		lx,
 		ly,
-		lEnc,
-		rEnc,
-		lEncVals[STORE_MAX],
-		rEncVals[STORE_MAX],
-		storeCount;
-
+		saveCount;
+#ifndef HOLONOMIC
 	bool arcade,
 		split,
 		reversed;
+#endif
 
+#ifdef HOLONOMIC
+	word storeLast;
+#else
 	word arcadeLast,
 		splitLast,
 		reversedLast,
 		storeLast;
+#endif
+
+#ifdef HOLONOMIC
+flEnc.name = flWheelEnc;
+frEnc.name = frWheelEnc;
+blEnc.name = blWheelEnc;
+brEnc.name = brWheelEnc;
+#else
+lEnc.name = lWheelEnc;
+rEnc.name = rWheelEnc;
+#endif
+
 
 	while(true) {
-		rx = (vexRT[ChRX] > STICK_THRESH) ? vexRT[ChRX] : 0;
-		ry = (vexRT[ChRY] > STICK_THRESH) ? vexRT[ChRY] : 0;
-		ly = (vexRT[ChLY] > STICK_THRESH) ? vexRT[ChLY] : 0;
-		lx = (vexRT[ChLX] > STICK_THRESH) ? vexRT[ChLX] : 0;
+		rx = (abs(vexRT[ChRX]) > STICK_THRESH) ? vexRT[ChRX] : 0;
+		ry = (abs(vexRT[ChRY]) > STICK_THRESH) ? vexRT[ChRY] : 0;
+		ly = (abs(vexRT[ChLY]) > STICK_THRESH) ? vexRT[ChLY] : 0;
+		lx = (abs(vexRT[ChLX]) > STICK_THRESH) ? vexRT[ChLX] : 0;
 
+#ifdef HOLONOMIC
+		updateEnc(&flEnc);
+		updateEnc(&frEnc);
+		updateEnc(&blEnc);
+		updateEnc(&brEnc);
+#else
+		updateEnc(&lEnc);
+		updateEnc(&rEnc);
+#endif
+
+#ifdef HOLONOMIC
+    motor[flWheel] = ly + rx + lx;
+    motor[frWheel] = ly - rx - lx;
+    motor[blWheel] = ly + rx - lx;
+    motor[brWheel] = ly - rx + lx;
+#else
 		if(vexRT[ARCADE_BTN] != arcadeLast) {
 			arcadeLast = vexRT[ARCADE_BTN];
 			arcade = !arcade;
@@ -101,24 +149,23 @@ task main() {
 			motor[leftMotor] = reversed ? -ry : ly;
 			motor[rightMotor] = reversed ? -ly : ry;
 		}
+#endif
 
 		if(vexRT[NUM_STORE] != storeLast) {
 			storeLast = vexRT[NUM_STORE];
-
-			lEncVals[storeCount % STORE_MAX] = lEnc;
-			rEncVals[storeCount % STORE_MAX] = rEnc;
 			
-			if(storeCount >= STORE_MAX) {
-				displayLCDCenteredString(0, "%d VALUES STORED", STORE_MAX);
-				displayLCDCenteredString(1, "OVERWRITING");
-				flashLcd(3);
+			if(storeCount < STORE_MAX) {
+#ifdef HOLONOMIC
+				saveEncVal(&flEnc);
+				saveEncVal(&frEnc);
+				saveEncVal(&blEnc);
+				saveEncVal(&brEnc);
+#else
+				saveEncVal(&lEnc);
+				saveEncVal(&rEnc);
+#endif
 			}
-			else {
-			  flashLcd(1);
-			  displayLCDCenteredString(0, "Count:");
-			  displayLCDCenteredString(1, "%d", storeCount);
 			
-			storeCount++;
 		}
 
 		wait1Msec(20);
